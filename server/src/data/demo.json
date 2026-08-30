@@ -1,0 +1,233 @@
+{
+  "id": "demo-assessment-001",
+  "isDemo": true,
+  "status": "complete",
+  "questionPaper": {
+    "originalName": "Sample_Question_Paper.pdf",
+    "size": 245760,
+    "mimeType": "application/pdf"
+  },
+  "answerSheet": {
+    "originalName": "Student_Answer_Sheet.pdf",
+    "size": 189440,
+    "mimeType": "application/pdf"
+  },
+  "questions": [
+    {
+      "id": "q-001",
+      "originalNumber": "1",
+      "number": "1",
+      "displayLabel": "Q1",
+      "text": "What is React.js and explain its key features including virtual DOM, component-based architecture, and unidirectional data flow?",
+      "subPart": null,
+      "pageNumber": 1,
+      "boundingBox": { "x": 0.05, "y": 0.10, "width": 0.90, "height": 0.08 },
+      "order": 0
+    },
+    {
+      "id": "q-002",
+      "originalNumber": "2",
+      "number": "2",
+      "displayLabel": "Q2",
+      "text": "Explain the difference between SQL and NoSQL databases with examples.",
+      "subPart": null,
+      "pageNumber": 1,
+      "boundingBox": { "x": 0.05, "y": 0.22, "width": 0.90, "height": 0.07 },
+      "order": 1
+    },
+    {
+      "id": "q-003",
+      "originalNumber": "3",
+      "number": "3",
+      "displayLabel": "Q3",
+      "text": "What is Node.js? How does its event-driven, non-blocking I/O model work?",
+      "subPart": null,
+      "pageNumber": 1,
+      "boundingBox": { "x": 0.05, "y": 0.33, "width": 0.90, "height": 0.07 },
+      "order": 2
+    },
+    {
+      "id": "q-004",
+      "originalNumber": "4(a)",
+      "number": "4a",
+      "displayLabel": "Q4(A)",
+      "text": "Define REST API and list its key architectural constraints.",
+      "subPart": "a",
+      "pageNumber": 1,
+      "boundingBox": { "x": 0.05, "y": 0.44, "width": 0.90, "height": 0.07 },
+      "order": 3
+    },
+    {
+      "id": "q-005",
+      "originalNumber": "4(b)",
+      "number": "4b",
+      "displayLabel": "Q4(B)",
+      "text": "Write HTTP status codes for: success, not found, server error, and unauthorized.",
+      "subPart": "b",
+      "pageNumber": 1,
+      "boundingBox": { "x": 0.05, "y": 0.55, "width": 0.90, "height": 0.07 },
+      "order": 4
+    },
+    {
+      "id": "q-006",
+      "originalNumber": "5",
+      "number": "5",
+      "displayLabel": "Q5",
+      "text": "What is CSS Flexbox? Explain with a practical use-case.",
+      "subPart": null,
+      "pageNumber": 2,
+      "boundingBox": { "x": 0.05, "y": 0.10, "width": 0.90, "height": 0.07 },
+      "order": 5
+    }
+  ],
+  "mappings": [
+    {
+      "id": "m-001",
+      "questionId": "q-001",
+      "questionNumber": "1",
+      "questionDisplayLabel": "Q1",
+      "questionText": "What is React.js and explain its key features including virtual DOM, component-based architecture, and unidirectional data flow?",
+      "questionPageNumber": 1,
+      "questionBoundingBox": { "x": 0.05, "y": 0.10, "width": 0.90, "height": 0.08 },
+      "answerStatus": "answered",
+      "answerText": "React.js is a JavaScript library developed by Facebook for building user interfaces. It uses a Virtual DOM which is an in-memory representation of the real DOM. Key features include: 1) Virtual DOM for efficient rendering 2) Component-based architecture where UI is split into reusable components 3) Unidirectional data flow using props and state.",
+      "answerRegions": [
+        {
+          "pageNumber": 2,
+          "x": 0.05, "y": 0.08, "width": 0.88, "height": 0.28,
+          "imageUrl": "/uploads/demo/answer_page2.png"
+        }
+      ],
+      "confidence": 0.95,
+      "isReadable": true,
+      "notes": ""
+    },
+    {
+      "id": "m-002",
+      "questionId": "q-002",
+      "questionNumber": "2",
+      "questionDisplayLabel": "Q2",
+      "questionText": "Explain the difference between SQL and NoSQL databases with examples.",
+      "questionPageNumber": 1,
+      "questionBoundingBox": { "x": 0.05, "y": 0.22, "width": 0.90, "height": 0.07 },
+      "answerStatus": "unanswered",
+      "answerText": null,
+      "answerRegions": [],
+      "confidence": 0,
+      "isReadable": false,
+      "notes": "Student did not attempt this question"
+    },
+    {
+      "id": "m-003",
+      "questionId": "q-003",
+      "questionNumber": "3",
+      "questionDisplayLabel": "Q3",
+      "questionText": "What is Node.js? How does its event-driven, non-blocking I/O model work?",
+      "questionPageNumber": 1,
+      "questionBoundingBox": { "x": 0.05, "y": 0.33, "width": 0.90, "height": 0.07 },
+      "answerStatus": "answered",
+      "answerText": "Node.js is a runtime environment that allows JavaScript to run on the server side. It uses an event loop and non-blocking I/O operations. When an async operation is initiated, Node.js registers a callback and moves to the next task. The event loop processes callbacks when operations complete. This allows handling many concurrent connections efficiently.",
+      "answerRegions": [
+        {
+          "pageNumber": 1,
+          "x": 0.05, "y": 0.08, "width": 0.88, "height": 0.35,
+          "imageUrl": "/uploads/demo/answer_page1.png"
+        }
+      ],
+      "confidence": 0.91,
+      "isReadable": true,
+      "notes": ""
+    },
+    {
+      "id": "m-004",
+      "questionId": "q-004",
+      "questionNumber": "4a",
+      "questionDisplayLabel": "Q4(A)",
+      "questionText": "Define REST API and list its key architectural constraints.",
+      "questionPageNumber": 1,
+      "questionBoundingBox": { "x": 0.05, "y": 0.44, "width": 0.90, "height": 0.07 },
+      "answerStatus": "answered",
+      "answerText": "REST (Representational State Transfer) is an architectural style for distributed hypermedia systems. Key constraints: Stateless, Client-Server separation, Cacheable, Uniform Interface, Layered System, Code on Demand (optional).",
+      "answerRegions": [
+        {
+          "pageNumber": 3,
+          "x": 0.05, "y": 0.08, "width": 0.88, "height": 0.22,
+          "imageUrl": "/uploads/demo/answer_page3.png"
+        },
+        {
+          "pageNumber": 4,
+          "x": 0.05, "y": 0.08, "width": 0.88, "height": 0.15,
+          "imageUrl": "/uploads/demo/answer_page4.png"
+        }
+      ],
+      "confidence": 0.88,
+      "isReadable": true,
+      "notes": "Answer spans 2 pages"
+    },
+    {
+      "id": "m-005",
+      "questionId": "q-005",
+      "questionNumber": "4b",
+      "questionDisplayLabel": "Q4(B)",
+      "questionText": "Write HTTP status codes for: success, not found, server error, and unauthorized.",
+      "questionPageNumber": 1,
+      "questionBoundingBox": { "x": 0.05, "y": 0.55, "width": 0.90, "height": 0.07 },
+      "answerStatus": "ambiguous",
+      "answerText": "200 OK, 404 Not Found, 500..., 401",
+      "answerRegions": [
+        {
+          "pageNumber": 4,
+          "x": 0.05, "y": 0.25, "width": 0.88, "height": 0.12,
+          "imageUrl": "/uploads/demo/answer_page4.png"
+        }
+      ],
+      "confidence": 0.58,
+      "isReadable": true,
+      "notes": "Handwriting partially unclear — review recommended"
+    },
+    {
+      "id": "m-006",
+      "questionId": "q-006",
+      "questionNumber": "5",
+      "questionDisplayLabel": "Q5",
+      "questionText": "What is CSS Flexbox? Explain with a practical use-case.",
+      "questionPageNumber": 2,
+      "questionBoundingBox": { "x": 0.05, "y": 0.10, "width": 0.90, "height": 0.07 },
+      "answerStatus": "answered",
+      "answerText": "CSS Flexbox is a layout model that allows flexible arrangement of elements. Uses display:flex on container. Practical use: centering elements both horizontally and vertically, creating responsive navigation bars.",
+      "answerRegions": [
+        {
+          "pageNumber": 2,
+          "x": 0.05, "y": 0.40, "width": 0.88, "height": 0.30,
+          "imageUrl": "/uploads/demo/answer_page2.png"
+        }
+      ],
+      "confidence": 0.93,
+      "isReadable": true,
+      "notes": ""
+    }
+  ],
+  "unmatchedAnswers": [
+    {
+      "id": "um-001",
+      "questionNumber": null,
+      "text": "Additional notes written at bottom of page — possibly rough work or formula list",
+      "regions": [
+        {
+          "pageNumber": 4,
+          "x": 0.05, "y": 0.75, "width": 0.88, "height": 0.15,
+          "imageUrl": "/uploads/demo/answer_page4.png"
+        }
+      ],
+      "confidence": 0.45,
+      "reason": "Could not attribute to any question"
+    }
+  ],
+  "summary": {
+    "totalQuestions": 6,
+    "answered": 4,
+    "unanswered": 1,
+    "ambiguous": 1,
+    "unmatchedAnswers": 1
+  }
+}
