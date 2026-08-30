@@ -15,9 +15,9 @@ const app = express();
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(morgan(config.nodeEnv === 'production' ? 'combined' : 'dev'));
 
-// CORS
+// CORS — allow requests from any client origin (localhost, Render, Vercel)
 app.use(cors({
-  origin: config.clientUrl,
+  origin: true,
   credentials: true,
   methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
