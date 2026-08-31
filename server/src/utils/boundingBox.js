@@ -16,14 +16,21 @@ const isValidBoundingBox = (bbox) => {
 };
 
 /**
- * Clamp a bounding box to [0, 1] range.
+ * Clamp a bounding box to [0, 1] range, keeping it large enough to still be a
+ * visible highlight rather than a hairline.
  */
-const clampBoundingBox = (bbox) => ({
-  x: Math.max(0, Math.min(1, bbox.x)),
-  y: Math.max(0, Math.min(1, bbox.y)),
-  width: Math.max(0.01, Math.min(1 - Math.max(0, bbox.x), bbox.width)),
-  height: Math.max(0.01, Math.min(1 - Math.max(0, bbox.y), bbox.height)),
-});
+const MIN_SIZE = 0.03;
+
+const clampBoundingBox = (bbox) => {
+  const x = Math.max(0, Math.min(1 - MIN_SIZE, bbox.x));
+  const y = Math.max(0, Math.min(1 - MIN_SIZE, bbox.y));
+  return {
+    x,
+    y,
+    width: Math.max(MIN_SIZE, Math.min(1 - x, bbox.width)),
+    height: Math.max(MIN_SIZE, Math.min(1 - y, bbox.height)),
+  };
+};
 
 /**
  * Convert pixel-based bbox to normalized given page dimensions.

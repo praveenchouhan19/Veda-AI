@@ -76,3 +76,45 @@ describe('mergeRegions', () => {
     expect(mergeRegions([])).toBeNull();
   });
 });
+
+const { normalizeRegion } = require('../src/services/ai/geminiService');
+
+describe('normalizeRegion', () => {
+  const expected = { x: 0.24, y: 0.135, width: 0.65, height: 0.23 };
+  const close = (region) => ({
+    x: +region.x.toFixed(3),
+    y: +region.y.toFixed(3),
+    width: +region.width.toFixed(3),
+    height: +region.height.toFixed(3),
+  });
+
+  test('accepts the requested x/y/width/height form', () => {
+    expect(close(normalizeRegion(expected))).toEqual(expected);
+  });
+
+  test('accepts box_2d [ymin, xmin, ymax, xmax] on the 0-1000 scale', () => {
+    expect(close(normalizeRegion({ box_2d: [135, 240, 365, 890] }))).toEqual(expected);
+  });
+
+  test('accepts a bare corner array', () => {
+    expect(close(normalizeRegion([135, 240, 365, 890]))).toEqual(expected);
+  });
+
+  test('accepts named corners', () => {
+    expect(close(normalizeRegion({ ymin: 135, xmin: 240, ymax: 365, xmax: 890 }))).toEqual(expected);
+  });
+
+  test('accepts a 0-100 percentage scale', () => {
+    expect(close(normalizeRegion({ x: 24, y: 13.5, width: 65, height: 23 }))).toEqual(expected);
+  });
+
+  test('grows a degenerate box to stay visible', () => {
+    const region = normalizeRegion({ x: 0.05, y: 0.98, width: 0.9, height: 0.001 });
+    expect(region.height).toBeGreaterThanOrEqual(0.03);
+  });
+
+  test('returns null for unusable input', () => {
+    expect(normalizeRegion({ foo: 1 })).toBeNull();
+    expect(normalizeRegion(null)).toBeNull();
+  });
+});

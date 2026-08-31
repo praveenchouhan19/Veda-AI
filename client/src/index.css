@@ -90,7 +90,7 @@
 }
 
 .highlight-label {
-  @apply absolute -top-[1.35rem] left-0 px-2 py-0.5 text-[11px] font-semibold leading-tight text-white rounded-t-md;
+  @apply absolute top-0 left-0 px-1.5 py-0.5 text-[11px] font-semibold leading-tight text-white rounded-br-md;
   background-color: #22c55e;
 }
 

@@ -177,15 +177,84 @@ const toNumber = (value, fallback) => {
   return Number.isFinite(n) ? n : fallback;
 };
 
+// A highlight thinner than this is useless to a teacher, so treat it as a bad
+// detection rather than drawing a sliver.
+const MIN_REGION_SIZE = 0.03;
+
+/**
+ * Gemini is asked for {x, y, width, height} in 0-1, but it frequently answers in
+ * its native detection format instead: box_2d as [ymin, xmin, ymax, xmax] scaled
+ * 0-1000. Accept both, plus corner pairs, and infer the scale from the values.
+ * Returns null when the box is unusable.
+ */
 const normalizeRegion = (region) => {
-  const r = region || {};
+  if (!region) return null;
+
+  const pick = (...names) => {
+    for (const name of names) {
+      const value = toNumber(region[name], null);
+      if (value !== null) return value;
+    }
+    return null;
+  };
+
+  let corners = null; // [yMin, xMin, yMax, xMax]
+
+  if (Array.isArray(region) && region.length === 4) {
+    corners = region.map((v) => toNumber(v, 0));
+  } else if (Array.isArray(region.box_2d) && region.box_2d.length === 4) {
+    corners = region.box_2d.map((v) => toNumber(v, 0));
+  } else {
+    const yMin = pick('ymin', 'yMin', 'top', 'y1');
+    const xMin = pick('xmin', 'xMin', 'left', 'x1');
+    const yMax = pick('ymax', 'yMax', 'bottom', 'y2');
+    const xMax = pick('xmax', 'xMax', 'right', 'x2');
+    if ([yMin, xMin, yMax, xMax].every((v) => v !== null)) corners = [yMin, xMin, yMax, xMax];
+  }
+
+  let box;
+  if (corners) {
+    const [yMin, xMin, yMax, xMax] = corners;
+    box = { x: xMin, y: yMin, width: xMax - xMin, height: yMax - yMin };
+  } else {
+    const x = pick('x');
+    const y = pick('y');
+    const width = pick('width', 'w');
+    const height = pick('height', 'h');
+    if ([x, y, width, height].some((v) => v === null)) return null;
+    box = { x, y, width, height };
+  }
+
+  // Infer the coordinate scale from the largest magnitude present.
+  const magnitude = Math.max(
+    Math.abs(box.x + box.width),
+    Math.abs(box.y + box.height),
+    Math.abs(box.x),
+    Math.abs(box.y)
+  );
+  const divisor = magnitude <= 1.5 ? 1 : magnitude <= 100 ? 100 : 1000;
+
+  const scaled = {
+    x: box.x / divisor,
+    y: box.y / divisor,
+    width: box.width / divisor,
+    height: box.height / divisor,
+  };
+
+  if (Object.values(scaled).some((v) => !Number.isFinite(v))) return null;
+  if (scaled.width <= 0 || scaled.height <= 0) return null;
+  if (scaled.x >= 1 || scaled.y >= 1) return null;
+
   return {
-    x: toNumber(r.x, 0.05),
-    y: toNumber(r.y, 0.05),
-    width: toNumber(r.width, 0.9),
-    height: toNumber(r.height, 0.1),
+    x: Math.max(0, Math.min(0.99, scaled.x)),
+    y: Math.max(0, Math.min(0.99, scaled.y)),
+    width: Math.max(MIN_REGION_SIZE, Math.min(1 - Math.max(0, scaled.x), scaled.width)),
+    height: Math.max(MIN_REGION_SIZE, Math.min(1 - Math.max(0, scaled.y), scaled.height)),
   };
 };
+
+// Used when the model gives no usable box, so the answer is still reviewable.
+const FALLBACK_REGION = { x: 0.05, y: 0.05, width: 0.9, height: 0.12 };
 
 /**
  * Convert a file to a Gemini-compatible inlineData part.
@@ -267,7 +336,7 @@ Return ONLY valid JSON with this exact shape:
       text: String(q.text || '').trim(),
       subPart: q.subPart || null,
       maxMarks: toNumber(q.maxMarks, null),
-      boundingBox: normalizeRegion(q.boundingBox),
+      boundingBox: normalizeRegion(q.boundingBox) || FALLBACK_REGION,
       pageNumber,
     }));
 };
@@ -333,7 +402,7 @@ Return ONLY valid JSON:
       questionNumber: a.questionNumber == null ? null : String(a.questionNumber),
       text: String(a.text || '').trim(),
       confidence: Math.max(0, Math.min(1, toNumber(a.confidence, 0.7))),
-      regions: [{ pageNumber, ...normalizeRegion(a.region) }],
+      regions: [{ pageNumber, ...(normalizeRegion(a.region) || FALLBACK_REGION) }],
       isReadable: a.isReadable !== false,
       continuesFromPreviousPage: a.continuesFromPreviousPage === true,
       notes: String(a.notes || ''),
@@ -352,7 +421,7 @@ Return ONLY valid JSON:
       .filter((u) => u && String(u.text || '').trim().length > 0)
       .map((u) => ({
         text: String(u.text).trim(),
-        regions: [{ pageNumber, ...normalizeRegion(u.region) }],
+        regions: [{ pageNumber, ...(normalizeRegion(u.region) || FALLBACK_REGION) }],
         confidence: Math.max(0, Math.min(1, toNumber(u.confidence, 0.5))),
       })),
   ];
@@ -418,4 +487,5 @@ module.exports = {
   extractAnswersFromPage,
   gradeAnswers,
   initGemini,
+  normalizeRegion,
 };
