@@ -2,68 +2,78 @@ const { v4: uuidv4 } = require('uuid');
 const geminiService = require('./ai/geminiService');
 const { processFileToPages, getPublicUrl } = require('./pdfService');
 const { normalizeQuestionNumber } = require('../utils/normalizer');
-const { isValidBoundingBox, clampBoundingBox } = require('../utils/boundingBox');
+const { clampBoundingBox } = require('../utils/boundingBox');
+const { mapWithConcurrency } = require('../utils/concurrency');
+const config = require('../config');
+
+/**
+ * Attach the page image URL and clamp the box into the unit square.
+ */
+const buildRegion = (region, imagePath) => ({
+  pageNumber: region.pageNumber,
+  ...clampBoundingBox(region),
+  imageUrl: getPublicUrl(imagePath),
+});
 
 /**
  * Extract all answers from a student answer sheet file.
  * Returns arrays of detected answers and unmatched regions.
  */
-const extractAnswers = async (filePath, prefix) => {
+const extractAnswers = async (filePath, prefix, onProgress) => {
   const pages = await processFileToPages(filePath, `${prefix}_as`);
-  const allAnswers = [];
-  const allUnmatched = [];
+  const pageErrors = [];
+  let done = 0;
 
-  const pagePromises = pages.map(async ({ imagePath, pageNumber }) => {
+  const pageResults = await mapWithConcurrency(pages, config.pageConcurrency, async (page) => {
     try {
-      const { answers, unmatched } = await geminiService.extractAnswersFromPage(imagePath, pageNumber);
+      const { answers, unmatched } = await geminiService.extractAnswersFromPage(
+        page.imagePath,
+        page.pageNumber
+      );
 
-      const answersWithUrls = answers.map((a) => ({
-        ...a,
-        regions: a.regions.map((r) => ({
-          ...r,
-          imageUrl: getPublicUrl(imagePath),
-          x: isValidBoundingBox(r) ? clampBoundingBox(r).x : (r.x || 0),
-          y: isValidBoundingBox(r) ? clampBoundingBox(r).y : (r.y || 0),
-          width: isValidBoundingBox(r) ? clampBoundingBox(r).width : (r.width || 0.9),
-          height: isValidBoundingBox(r) ? clampBoundingBox(r).height : (r.height || 0.1),
+      return {
+        answers: answers.map((a) => ({
+          ...a,
+          regions: a.regions.map((r) => buildRegion(r, page.imagePath)),
         })),
-      }));
-
-      const unmatchedWithUrls = unmatched.map((u) => ({
-        ...u,
-        regions: u.regions.map((r) => ({
-          ...r,
-          imageUrl: getPublicUrl(imagePath),
+        unmatched: unmatched.map((u) => ({
+          ...u,
+          regions: u.regions.map((r) => buildRegion(r, page.imagePath)),
         })),
-      }));
-
-      return { answers: answersWithUrls, unmatched: unmatchedWithUrls };
+      };
     } catch (err) {
-      console.error(`Error extracting answers from page ${pageNumber}:`, err.message);
+      console.error(`Error extracting answers from page ${page.pageNumber}:`, err.message);
+      pageErrors.push(`page ${page.pageNumber}: ${err.message}`);
       return { answers: [], unmatched: [] };
+    } finally {
+      done += 1;
+      if (onProgress) onProgress(done, pages.length);
     }
   });
 
-  const pageResults = await Promise.all(pagePromises);
-  pageResults.forEach(({ answers, unmatched }) => {
-    allAnswers.push(...answers);
-    allUnmatched.push(...unmatched);
-  });
+  const allAnswers = pageResults.flatMap((r) => r.answers);
+  const allUnmatched = pageResults.flatMap((r) => r.unmatched);
 
-  // Normalize question numbers and merge multi-page answers for same question
+  if (allAnswers.length === 0 && allUnmatched.length === 0 && pageErrors.length > 0) {
+    throw new Error(`Could not read the answer sheet. ${pageErrors[0]}`);
+  }
+
+  // Merge in page order so continuations concatenate in the right sequence.
+  const ordered = [...allAnswers].sort((a, b) => a.pageNumber - b.pageNumber);
   const answerMap = new Map();
 
-  for (const answer of allAnswers) {
+  for (const answer of ordered) {
     const normalized = normalizeQuestionNumber(answer.questionNumber);
     if (!normalized) continue;
 
-    if (answerMap.has(normalized)) {
-      // Merge regions (multi-page answer)
-      const existing = answerMap.get(normalized);
+    const existing = answerMap.get(normalized);
+    if (existing) {
       existing.regions = [...existing.regions, ...answer.regions];
-      existing.text = existing.text + '\n[Continued]\n' + answer.text;
-      // Keep the higher confidence
+      existing.text = `${existing.text}\n${answer.text}`.trim();
+      // A continuation of an already-confident answer shouldn't drag it down.
       existing.confidence = Math.max(existing.confidence, answer.confidence);
+      existing.isReadable = existing.isReadable || answer.isReadable;
+      existing.pageCount = new Set(existing.regions.map((r) => r.pageNumber)).size;
     } else {
       answerMap.set(normalized, {
         id: uuidv4(),
@@ -74,6 +84,7 @@ const extractAnswers = async (filePath, prefix) => {
         regions: answer.regions,
         isReadable: answer.isReadable,
         notes: answer.notes,
+        pageCount: 1,
       });
     }
   }

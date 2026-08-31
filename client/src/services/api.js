@@ -2,6 +2,16 @@ import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
+/**
+ * Resolve a server-relative asset path (e.g. "/uploads/ab12/page.1.png")
+ * into an absolute URL the browser can load.
+ */
+export const assetUrl = (urlPath) => {
+  if (!urlPath) return null;
+  if (/^(https?:)?\/\//i.test(urlPath) || urlPath.startsWith('data:')) return urlPath;
+  return `${API_URL}${urlPath.startsWith('/') ? '' : '/'}${urlPath}`;
+};
+
 const api = axios.create({
   baseURL: `${API_URL}/api`,
   timeout: 120000, // 2 min for AI processing

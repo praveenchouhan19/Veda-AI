@@ -1,284 +1,251 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Upload, FileText, Image, X, CheckCircle, Play, Sparkles } from 'lucide-react';
+import { ArrowRight, FileText, Upload, X } from 'lucide-react';
 import { analyzeDocuments, getDemoAssessment } from '../services/api';
 
-const ACCEPTED_TYPES = {
-  'application/pdf': '.pdf',
-  'image/png': '.png',
-  'image/jpeg': '.jpg',
-  'image/jpg': '.jpg',
-  'image/webp': '.webp',
-};
-const MAX_SIZE_MB = 20;
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const ACCEPTED_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
 
-const formatBytes = (bytes) => {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+const formatSize = (bytes) => {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))}KB`;
+  const mb = bytes / (1024 * 1024);
+  return `${mb < 10 ? mb.toFixed(1).replace(/\.0$/, '') : Math.round(mb)}MB`;
 };
 
-const getFileIcon = (file) => {
-  if (file.type === 'application/pdf') return <FileText className="w-5 h-5 text-red-500" />;
-  return <Image className="w-5 h-5 text-blue-500" />;
-};
-
-const DropZone = ({ label, description, file, onFile, onRemove, accept }) => {
-  const [dragging, setDragging] = useState(false);
-
-  const handleDrop = useCallback((e) => {
-    e.preventDefault();
-    setDragging(false);
-    const dropped = e.dataTransfer.files[0];
-    if (dropped) onFile(dropped);
-  }, [onFile]);
-
-  const handleDragOver = (e) => { e.preventDefault(); setDragging(true); };
-  const handleDragLeave = () => setDragging(false);
-
-  const handleInputChange = (e) => {
-    const selected = e.target.files[0];
-    if (selected) onFile(selected);
-  };
-
-  if (file) {
-    return (
-      <div className="border-2 border-success-500 bg-success-50 rounded-xl p-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white rounded-lg shadow-sm flex items-center justify-center">
-              {getFileIcon(file)}
-            </div>
-            <div>
-              <p className="text-sm font-medium text-slate-800 truncate max-w-xs">{file.name}</p>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {file.type === 'application/pdf' ? 'PDF Document' : 'Image'} · {formatBytes(file.size)}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <CheckCircle className="w-5 h-5 text-success-500" />
-            <button
-              onClick={onRemove}
-              className="p-1.5 rounded-lg hover:bg-danger-50 text-slate-400 hover:text-danger-500 transition-colors"
-              title="Remove file"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+/**
+ * Best-effort page count so the file chip can read "2 Pages" like the design.
+ * Returns null when it cannot be determined.
+ */
+const readPageCount = async (file) => {
+  if (file.type !== 'application/pdf') return 1;
+  try {
+    const text = new TextDecoder('latin1').decode(await file.arrayBuffer());
+    const matches = text.match(/\/Type\s*\/Page[^s]/g);
+    return matches ? matches.length : null;
+  } catch {
+    return null;
   }
+};
+
+function TeacherIllustration() {
+  const dotPositions = [
+    'top-0 left-1/2 -translate-x-1/2',
+    'top-1/2 right-0 -translate-y-1/2',
+    'bottom-0 left-1/2 -translate-x-1/2',
+    'top-1/2 left-0 -translate-y-1/2',
+  ];
 
   return (
-    <label
-      className={`block border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200
-        ${dragging
-          ? 'border-primary-500 bg-primary-50'
-          : 'border-slate-200 hover:border-primary-300 hover:bg-slate-50'
-        }`}
+    <div className="relative w-[108px] h-[108px] mx-auto">
+      <span className="absolute inset-0 rounded-full bg-primary-100 animate-ring-pulse" />
+      <span className="absolute inset-[10px] rounded-full border-2 border-primary-200" />
+      <svg viewBox="0 0 96 96" className="absolute inset-[17px] w-[74px] h-[74px]" aria-hidden="true">
+        <defs>
+          <clipPath id="teacher-clip">
+            <circle cx="48" cy="48" r="48" />
+          </clipPath>
+        </defs>
+        <g clipPath="url(#teacher-clip)">
+          <circle cx="48" cy="48" r="48" fill="#ffe4d9" />
+          {/* head and hair */}
+          <path d="M30 38a18 18 0 0136 0v6a18 18 0 01-36 0z" fill="#f3c6a8" />
+          <path d="M28 40c0-13 9-21 20-21s20 8 20 21c-4-5-10-7-20-7s-16 2-20 7z" fill="#2b2b2b" />
+          <path d="M28 40c-1 13 2 21 4 23-5-4-7-15-4-23zM68 40c1 13-2 21-4 23 5-4 7-15 4-23z" fill="#2b2b2b" />
+          {/* shoulders */}
+          <path d="M10 96c3-17 16-26 38-26s35 9 38 26z" fill="#1c1c1c" />
+          {/* open book */}
+          <path d="M26 82h44v18H26z" fill="#ffffff" />
+          <path d="M48 82v18M32 88h12M52 88h12M32 94h12M52 94h12" stroke="#c9d3de" strokeWidth="1.5" />
+        </g>
+      </svg>
+      {dotPositions.map((position) => (
+        <span key={position} className={`absolute w-2.5 h-2.5 rounded-full bg-primary-500 ${position}`} />
+      ))}
+    </div>
+  );
+}
+
+function UploadCard({ accentLabel, file, onSelect, onClear, disabled }) {
+  const inputRef = useRef(null);
+  const [dragging, setDragging] = useState(false);
+
+  const handleDrop = (event) => {
+    event.preventDefault();
+    setDragging(false);
+    if (disabled) return;
+    const dropped = event.dataTransfer.files?.[0];
+    if (dropped) onSelect(dropped);
+  };
+
+  return (
+    <div
+      className={`rounded-3xl border-2 border-dashed bg-white p-4 transition-colors ${
+        dragging ? 'border-primary-400 bg-primary-50' : 'border-black/10'
+      }`}
+      onDragOver={(event) => {
+        event.preventDefault();
+        setDragging(true);
+      }}
+      onDragLeave={() => setDragging(false)}
       onDrop={handleDrop}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
     >
       <input
+        ref={inputRef}
         type="file"
-        className="hidden"
-        accept={Object.keys(ACCEPTED_TYPES).join(',')}
-        onChange={handleInputChange}
+        className="sr-only"
+        accept=".pdf,.png,.jpg,.jpeg,.webp"
+        disabled={disabled}
+        onChange={(event) => {
+          const selected = event.target.files?.[0];
+          if (selected) onSelect(selected);
+          event.target.value = '';
+        }}
       />
-      <Upload className={`w-8 h-8 mx-auto mb-3 ${dragging ? 'text-primary-500' : 'text-slate-300'}`} />
-      <p className="text-sm font-medium text-slate-700 mb-1">{label}</p>
-      <p className="text-xs text-slate-400">{description}</p>
-      <p className="text-xs text-slate-400 mt-2">PDF, PNG, JPG · Max {MAX_SIZE_MB}MB</p>
-    </label>
+
+      {file ? (
+        <div className="relative flex items-center gap-3 rounded-2xl bg-black/[0.03] px-3 py-3 mt-2">
+          <span className="w-9 h-9 shrink-0 rounded-lg bg-danger-100 flex items-center justify-center">
+            <FileText className="w-4 h-4 text-danger-600" />
+          </span>
+          <div className="min-w-0 text-left">
+            <p className="text-sm font-semibold truncate">{file.name}</p>
+            <p className="text-xs text-ink-muted">
+              {formatSize(file.size)}
+              {file.pageCount ? ` • ${file.pageCount} Page${file.pageCount > 1 ? 's' : ''}` : ''}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClear}
+            disabled={disabled}
+            aria-label={`Remove ${accentLabel}`}
+            className="absolute -top-3 -right-3 w-7 h-7 rounded-full bg-ink-soft text-white flex items-center justify-center transition-colors hover:bg-ink disabled:opacity-50"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={disabled}
+          className="w-full flex flex-col items-center gap-3 py-7 rounded-2xl transition-colors hover:bg-black/[0.02] disabled:cursor-not-allowed"
+        >
+          <span className="w-10 h-10 rounded-xl bg-black/[0.04] flex items-center justify-center">
+            <Upload className="w-[18px] h-[18px] text-ink-soft" />
+          </span>
+          <span className="text-sm font-semibold">
+            Upload <span className="text-primary-500">{accentLabel}</span>
+          </span>
+          <span className="-mt-2 text-xs text-ink-muted">Max 10MB</span>
+        </button>
+      )}
+    </div>
   );
-};
+}
 
 export default function UploadPage({ onAnalysisStarted, onDemoLoaded }) {
   const [questionPaper, setQuestionPaper] = useState(null);
   const [answerSheet, setAnswerSheet] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [demoLoading, setDemoLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  const validateFile = (file) => {
-    if (!ACCEPTED_TYPES[file.type]) {
-      toast.error(`Invalid file type: ${file.type}. Use PDF, PNG, or JPG.`);
-      return false;
-    }
-    if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-      toast.error(`File too large. Maximum size is ${MAX_SIZE_MB}MB.`);
-      return false;
-    }
-    return true;
-  };
-
-  const handleQuestionPaper = (file) => {
-    if (validateFile(file)) setQuestionPaper(file);
-  };
-
-  const handleAnswerSheet = (file) => {
-    if (validateFile(file)) setAnswerSheet(file);
-  };
-
-  const handleAnalyze = async () => {
-    if (!questionPaper || !answerSheet) {
-      toast.error('Please upload both files before analyzing.');
+  const selectFile = useCallback(async (file, setter) => {
+    if (!ACCEPTED_TYPES.includes(file.type)) {
+      toast.error('Please upload a PDF, PNG, JPG or WEBP file.');
       return;
     }
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error(`${file.name} is larger than 10MB.`);
+      return;
+    }
+    file.pageCount = await readPageCount(file);
+    setter(file);
+  }, []);
 
-    setLoading(true);
+  const handleStartMapping = async () => {
+    if (!questionPaper || !answerSheet || submitting) return;
+
+    setSubmitting(true);
     setUploadProgress(0);
-
     try {
-      const response = await analyzeDocuments(questionPaper, answerSheet, setUploadProgress);
-      onAnalysisStarted(response.assessmentId);
+      const { assessmentId } = await analyzeDocuments(questionPaper, answerSheet, setUploadProgress);
+      onAnalysisStarted(assessmentId);
     } catch (err) {
-      toast.error(err.message || 'Failed to start analysis. Please try again.');
-      setLoading(false);
+      toast.error(err.message || 'Upload failed. Please try again.');
+      setSubmitting(false);
     }
   };
 
   const handleDemo = async () => {
-    setDemoLoading(true);
+    setSubmitting(true);
     try {
-      const demo = await getDemoAssessment();
-      toast.success('Demo assessment loaded!');
-      onDemoLoaded(demo);
+      onDemoLoaded(await getDemoAssessment());
     } catch (err) {
-      toast.error('Failed to load demo data. Is the server running?');
-    } finally {
-      setDemoLoading(false);
+      toast.error(err.message || 'Could not load the sample assessment.');
+      setSubmitting(false);
     }
   };
 
-  const canAnalyze = questionPaper && answerSheet && !loading;
+  const ready = Boolean(questionPaper && answerSheet);
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-12">
-      {/* Hero section */}
-      <div className="text-center mb-10">
-        <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary-50 text-primary-600 rounded-full text-xs font-medium mb-4">
-          <Sparkles className="w-3.5 h-3.5" />
-          AI-Powered Assessment
-        </div>
-        <h1 className="text-3xl font-bold text-slate-900 mb-3">
-          Analyze Answer Sheets Instantly
+    <div className="h-full overflow-y-auto">
+      <div className="max-w-3xl mx-auto px-4 py-6 sm:py-10 text-center animate-fade-up">
+        <h1 className="font-display text-2xl sm:text-4xl font-bold leading-tight">
+          Upload <span className="marker-accent">Question Paper &amp; Answer Sheets</span>
         </h1>
-        <p className="text-slate-500 max-w-lg mx-auto text-sm leading-relaxed">
-          Upload a question paper and a student's handwritten answer sheet.
-          Our AI extracts questions, maps answers, highlights regions, and flags unanswered questions.
-        </p>
-      </div>
+        <p className="mt-4 text-sm text-ink-muted">Upload both files to get started</p>
 
-      {/* Upload card */}
-      <div className="card p-6 mb-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
-              Question Paper
-            </label>
-            <DropZone
-              label="Drop question paper here"
-              description="PDF or image of the printed question paper"
+        <div className="mt-8">
+          <TeacherIllustration />
+        </div>
+
+        <div className="mt-8 rounded-[28px] bg-black/[0.025] p-3 sm:p-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <UploadCard
+              accentLabel="Question Paper"
               file={questionPaper}
-              onFile={handleQuestionPaper}
-              onRemove={() => setQuestionPaper(null)}
+              disabled={submitting}
+              onSelect={(file) => selectFile(file, setQuestionPaper)}
+              onClear={() => setQuestionPaper(null)}
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
-              Student Answer Sheet
-            </label>
-            <DropZone
-              label="Drop answer sheet here"
-              description="PDF or image of handwritten answers"
+            <UploadCard
+              accentLabel="Answer Sheet"
               file={answerSheet}
-              onFile={handleAnswerSheet}
-              onRemove={() => setAnswerSheet(null)}
+              disabled={submitting}
+              onSelect={(file) => selectFile(file, setAnswerSheet)}
+              onClear={() => setAnswerSheet(null)}
             />
           </div>
         </div>
 
-        {/* Upload progress bar */}
-        {loading && uploadProgress > 0 && uploadProgress < 100 && (
-          <div className="mb-4">
-            <div className="flex justify-between text-xs text-slate-500 mb-1">
-              <span>Uploading files...</span>
-              <span>{uploadProgress}%</span>
-            </div>
-            <div className="w-full bg-slate-100 rounded-full h-1.5">
-              <div
-                className="bg-primary-500 h-1.5 rounded-full transition-all duration-300"
-                style={{ width: `${uploadProgress}%` }}
-              />
-            </div>
-          </div>
-        )}
-
-        <div className="flex flex-col sm:flex-row items-center gap-3">
+        <div className="mt-8 flex flex-col items-center gap-3">
           <button
-            onClick={handleAnalyze}
-            disabled={!canAnalyze}
-            className="btn-primary w-full sm:w-auto flex-1 py-2.5"
+            type="button"
+            onClick={handleStartMapping}
+            disabled={!ready || submitting}
+            className="btn-primary"
           >
-            {loading ? (
-              <>
-                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                Processing...
-              </>
-            ) : (
-              <>
-                <Play className="w-4 h-4" />
-                Analyze Documents
-              </>
-            )}
+            {!submitting && 'Start Mapping'}
+            {submitting && uploadProgress < 100 && `Uploading ${uploadProgress}%`}
+            {submitting && uploadProgress >= 100 && 'Starting…'}
+            {!submitting && <ArrowRight className="w-4 h-4" />}
           </button>
 
-          <div className="text-slate-400 text-sm hidden sm:block">or</div>
+          <p className="text-xs text-ink-muted">
+            Once both files are uploaded, you&apos;ll be able to map answers with questions
+          </p>
 
           <button
+            type="button"
             onClick={handleDemo}
-            disabled={demoLoading}
-            className="btn-secondary w-full sm:w-auto"
+            disabled={submitting}
+            className="text-xs font-medium text-ink-muted underline underline-offset-4 transition-colors hover:text-primary-500 disabled:opacity-50"
           >
-            {demoLoading ? (
-              <>
-                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                Loading...
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4" />
-                Try Demo
-              </>
-            )}
+            Or explore a sample assessment
           </button>
         </div>
-      </div>
-
-      {/* Info cards */}
-      <div className="grid grid-cols-3 gap-3 text-center">
-        {[
-          { icon: '📄', title: 'Question Extraction', desc: 'AI reads every question including sub-parts' },
-          { icon: '✍️', title: 'Handwriting Detection', desc: 'Gemini Vision identifies handwritten answers' },
-          { icon: '🎯', title: 'Smart Mapping', desc: 'Handles out-of-order and multi-page answers' },
-        ].map((item) => (
-          <div key={item.title} className="card p-4">
-            <div className="text-2xl mb-2">{item.icon}</div>
-            <p className="text-xs font-semibold text-slate-700 mb-1">{item.title}</p>
-            <p className="text-xs text-slate-400">{item.desc}</p>
-          </div>
-        ))}
       </div>
     </div>
   );

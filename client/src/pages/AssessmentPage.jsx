@@ -1,109 +1,89 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import QuestionList from '../components/Assessment/QuestionList';
 import AnswerViewer from '../components/Assessment/AnswerViewer';
-import AnswerDetail from '../components/Assessment/AnswerDetail';
-import SummaryPanel from '../components/Assessment/SummaryPanel';
-import { LayoutGrid, Info } from 'lucide-react';
 
-export default function AssessmentPage({ assessment, onReset }) {
-  const [selectedMapping, setSelectedMapping] = useState(
-    assessment.mappings?.[0] || null
+export default function AssessmentPage({ assessment }) {
+  const mappings = useMemo(() => assessment?.mappings || [], [assessment]);
+  const [selectedId, setSelectedId] = useState(() => mappings[0]?.id ?? null);
+  const [expandedIds, setExpandedIds] = useState(() => new Set());
+  const [mobileTab, setMobileTab] = useState('questions');
+
+  const selectedMapping = mappings.find((m) => m.id === selectedId) || null;
+  const allExpanded = mappings.length > 0 && expandedIds.size === mappings.length;
+
+  const handleSelect = (mapping) => {
+    setSelectedId(mapping.id);
+    setMobileTab('answer');
+  };
+
+  const handleToggleExpand = (id) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleToggleExpandAll = () => {
+    setExpandedIds(allExpanded ? new Set() : new Set(mappings.map((m) => m.id)));
+  };
+
+  const questionPanel = (
+    <QuestionList
+      mappings={mappings}
+      unmatchedAnswers={assessment?.unmatchedAnswers || []}
+      selectedId={selectedId}
+      expandedIds={expandedIds}
+      onSelect={handleSelect}
+      onToggleExpand={handleToggleExpand}
+      onToggleExpandAll={handleToggleExpandAll}
+      allExpanded={allExpanded}
+    />
   );
-  const [activeTab, setActiveTab] = useState('assessment'); // 'assessment' | 'summary'
 
-  const { mappings = [], unmatchedAnswers = [], summary = {}, isDemo } = assessment;
+  const answerPanel = (
+    <AnswerViewer
+      assessment={assessment}
+      selectedMapping={selectedMapping}
+      onSelectMapping={(mapping) => setSelectedId(mapping.id)}
+    />
+  );
 
   return (
-    <div className="h-[calc(100vh-57px)] flex flex-col">
-      {/* Demo banner */}
-      {isDemo && (
-        <div className="bg-amber-50 border-b border-amber-200 px-6 py-2 flex items-center gap-2">
-          <Info className="w-4 h-4 text-amber-600 flex-shrink-0" />
-          <p className="text-xs text-amber-700">
-            <span className="font-semibold">Demo Mode:</span> Showing sample assessment data. Upload real documents to analyze with AI.
-          </p>
-        </div>
-      )}
-
-      {/* Top bar with tabs + summary chips */}
-      <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+    <div className="h-full min-h-0 flex flex-col gap-3 animate-fade-up">
+      {/* Mobile switches between the two panels; desktop shows them side by side. */}
+      <div className="lg:hidden shrink-0 grid grid-cols-2 gap-1 p-1 rounded-full bg-white shadow-card">
+        {[
+          { id: 'questions', label: 'Questions' },
+          { id: 'answer', label: 'Answer Sheet' },
+        ].map((tab) => (
           <button
-            onClick={() => setActiveTab('assessment')}
-            className={`text-sm font-medium pb-1 border-b-2 transition-colors ${
-              activeTab === 'assessment'
-                ? 'text-primary-600 border-primary-500'
-                : 'text-slate-500 border-transparent hover:text-slate-700'
+            key={tab.id}
+            type="button"
+            onClick={() => setMobileTab(tab.id)}
+            className={`py-2 text-sm font-medium rounded-full transition-colors ${
+              mobileTab === tab.id ? 'bg-ink text-white' : 'text-ink-muted'
             }`}
           >
-            <span className="flex items-center gap-1.5">
-              <LayoutGrid className="w-3.5 h-3.5" />
-              Assessment View
-            </span>
+            {tab.label}
           </button>
-          <button
-            onClick={() => setActiveTab('summary')}
-            className={`text-sm font-medium pb-1 border-b-2 transition-colors ${
-              activeTab === 'summary'
-                ? 'text-primary-600 border-primary-500'
-                : 'text-slate-500 border-transparent hover:text-slate-700'
-            }`}
-          >
-            Summary
-          </button>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-success-500" />
-            <span className="text-xs text-slate-600">{summary.answered || 0} answered</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-danger-500" />
-            <span className="text-xs text-slate-600">{summary.unanswered || 0} unanswered</span>
-          </div>
-          {summary.ambiguous > 0 && (
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-warning-500" />
-              <span className="text-xs text-slate-600">{summary.ambiguous} review</span>
-            </div>
-          )}
-        </div>
+        ))}
       </div>
 
-      {/* Main content area */}
-      {activeTab === 'assessment' ? (
-        <div className="flex-1 flex overflow-hidden">
-          {/* Left: Question list */}
-          <div className="w-72 flex-shrink-0 border-r border-slate-200 overflow-y-auto bg-white">
-            <QuestionList
-              mappings={mappings}
-              unmatchedAnswers={unmatchedAnswers}
-              selectedId={selectedMapping?.id}
-              onSelect={setSelectedMapping}
-            />
-          </div>
-
-          {/* Center: Answer sheet viewer with highlight */}
-          <div className="flex-1 overflow-hidden flex flex-col bg-slate-100">
-            <AnswerViewer selectedMapping={selectedMapping} />
-          </div>
-
-          {/* Right: Answer detail panel */}
-          <div className="w-80 flex-shrink-0 border-l border-slate-200 overflow-y-auto bg-white">
-            <AnswerDetail mapping={selectedMapping} />
-          </div>
+      <div className="flex-1 min-h-0 flex gap-3">
+        <div
+          className={`min-h-0 w-full lg:w-[380px] xl:w-[420px] lg:shrink-0 ${
+            mobileTab === 'questions' ? 'block' : 'hidden lg:block'
+          }`}
+        >
+          {questionPanel}
         </div>
-      ) : (
-        <div className="flex-1 overflow-y-auto p-6">
-          <SummaryPanel
-            summary={summary}
-            mappings={mappings}
-            unmatchedAnswers={unmatchedAnswers}
-            assessment={assessment}
-          />
+
+        <div className={`min-h-0 flex-1 ${mobileTab === 'answer' ? 'block' : 'hidden lg:block'}`}>
+          {answerPanel}
         </div>
-      )}
+      </div>
     </div>
   );
 }

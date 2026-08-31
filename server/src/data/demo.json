@@ -21,7 +21,12 @@
       "text": "What is React.js and explain its key features including virtual DOM, component-based architecture, and unidirectional data flow?",
       "subPart": null,
       "pageNumber": 1,
-      "boundingBox": { "x": 0.05, "y": 0.10, "width": 0.90, "height": 0.08 },
+      "boundingBox": {
+        "x": 0.05,
+        "y": 0.1,
+        "width": 0.9,
+        "height": 0.08
+      },
       "order": 0
     },
     {
@@ -32,7 +37,12 @@
       "text": "Explain the difference between SQL and NoSQL databases with examples.",
       "subPart": null,
       "pageNumber": 1,
-      "boundingBox": { "x": 0.05, "y": 0.22, "width": 0.90, "height": 0.07 },
+      "boundingBox": {
+        "x": 0.05,
+        "y": 0.22,
+        "width": 0.9,
+        "height": 0.07
+      },
       "order": 1
     },
     {
@@ -43,7 +53,12 @@
       "text": "What is Node.js? How does its event-driven, non-blocking I/O model work?",
       "subPart": null,
       "pageNumber": 1,
-      "boundingBox": { "x": 0.05, "y": 0.33, "width": 0.90, "height": 0.07 },
+      "boundingBox": {
+        "x": 0.05,
+        "y": 0.33,
+        "width": 0.9,
+        "height": 0.07
+      },
       "order": 2
     },
     {
@@ -54,7 +69,12 @@
       "text": "Define REST API and list its key architectural constraints.",
       "subPart": "a",
       "pageNumber": 1,
-      "boundingBox": { "x": 0.05, "y": 0.44, "width": 0.90, "height": 0.07 },
+      "boundingBox": {
+        "x": 0.05,
+        "y": 0.44,
+        "width": 0.9,
+        "height": 0.07
+      },
       "order": 3
     },
     {
@@ -65,7 +85,12 @@
       "text": "Write HTTP status codes for: success, not found, server error, and unauthorized.",
       "subPart": "b",
       "pageNumber": 1,
-      "boundingBox": { "x": 0.05, "y": 0.55, "width": 0.90, "height": 0.07 },
+      "boundingBox": {
+        "x": 0.05,
+        "y": 0.55,
+        "width": 0.9,
+        "height": 0.07
+      },
       "order": 4
     },
     {
@@ -76,7 +101,12 @@
       "text": "What is CSS Flexbox? Explain with a practical use-case.",
       "subPart": null,
       "pageNumber": 2,
-      "boundingBox": { "x": 0.05, "y": 0.10, "width": 0.90, "height": 0.07 },
+      "boundingBox": {
+        "x": 0.05,
+        "y": 0.1,
+        "width": 0.9,
+        "height": 0.07
+      },
       "order": 5
     }
   ],
@@ -88,19 +118,36 @@
       "questionDisplayLabel": "Q1",
       "questionText": "What is React.js and explain its key features including virtual DOM, component-based architecture, and unidirectional data flow?",
       "questionPageNumber": 1,
-      "questionBoundingBox": { "x": 0.05, "y": 0.10, "width": 0.90, "height": 0.08 },
+      "questionBoundingBox": {
+        "x": 0.05,
+        "y": 0.1,
+        "width": 0.9,
+        "height": 0.08
+      },
       "answerStatus": "answered",
       "answerText": "React.js is a JavaScript library developed by Facebook for building user interfaces. It uses a Virtual DOM which is an in-memory representation of the real DOM. Key features include: 1) Virtual DOM for efficient rendering 2) Component-based architecture where UI is split into reusable components 3) Unidirectional data flow using props and state.",
       "answerRegions": [
         {
           "pageNumber": 2,
-          "x": 0.05, "y": 0.08, "width": 0.88, "height": 0.28,
+          "x": 0.05,
+          "y": 0.08,
+          "width": 0.88,
+          "height": 0.28,
           "imageUrl": "/uploads/demo/answer_page2.png"
         }
       ],
       "confidence": 0.95,
       "isReadable": true,
-      "notes": ""
+      "notes": "",
+      "maxMarks": 5,
+      "order": 0,
+      "matchType": "exact",
+      "grading": {
+        "marksAwarded": 5,
+        "maxMarks": 5,
+        "status": "correct",
+        "feedback": "Excellent answer. You covered the virtual DOM, components and one-way data flow clearly."
+      }
     },
     {
       "id": "m-002",
@@ -109,13 +156,27 @@
       "questionDisplayLabel": "Q2",
       "questionText": "Explain the difference between SQL and NoSQL databases with examples.",
       "questionPageNumber": 1,
-      "questionBoundingBox": { "x": 0.05, "y": 0.22, "width": 0.90, "height": 0.07 },
+      "questionBoundingBox": {
+        "x": 0.05,
+        "y": 0.22,
+        "width": 0.9,
+        "height": 0.07
+      },
       "answerStatus": "unanswered",
       "answerText": null,
       "answerRegions": [],
       "confidence": 0,
       "isReadable": false,
-      "notes": "Student did not attempt this question"
+      "notes": "Student did not attempt this question",
+      "maxMarks": 5,
+      "order": 1,
+      "matchType": "none",
+      "grading": {
+        "marksAwarded": 0,
+        "maxMarks": 5,
+        "status": "incorrect",
+        "feedback": "No answer for this question was found on the answer sheet."
+      }
     },
     {
       "id": "m-003",
@@ -124,19 +185,36 @@
       "questionDisplayLabel": "Q3",
       "questionText": "What is Node.js? How does its event-driven, non-blocking I/O model work?",
       "questionPageNumber": 1,
-      "questionBoundingBox": { "x": 0.05, "y": 0.33, "width": 0.90, "height": 0.07 },
+      "questionBoundingBox": {
+        "x": 0.05,
+        "y": 0.33,
+        "width": 0.9,
+        "height": 0.07
+      },
       "answerStatus": "answered",
       "answerText": "Node.js is a runtime environment that allows JavaScript to run on the server side. It uses an event loop and non-blocking I/O operations. When an async operation is initiated, Node.js registers a callback and moves to the next task. The event loop processes callbacks when operations complete. This allows handling many concurrent connections efficiently.",
       "answerRegions": [
         {
           "pageNumber": 1,
-          "x": 0.05, "y": 0.08, "width": 0.88, "height": 0.35,
+          "x": 0.05,
+          "y": 0.08,
+          "width": 0.88,
+          "height": 0.35,
           "imageUrl": "/uploads/demo/answer_page1.png"
         }
       ],
       "confidence": 0.91,
       "isReadable": true,
-      "notes": ""
+      "notes": "",
+      "maxMarks": 5,
+      "order": 2,
+      "matchType": "exact",
+      "grading": {
+        "marksAwarded": 5,
+        "maxMarks": 5,
+        "status": "correct",
+        "feedback": "Well explained. Your description of the event loop and non-blocking I/O is accurate."
+      }
     },
     {
       "id": "m-004",
@@ -145,24 +223,44 @@
       "questionDisplayLabel": "Q4(A)",
       "questionText": "Define REST API and list its key architectural constraints.",
       "questionPageNumber": 1,
-      "questionBoundingBox": { "x": 0.05, "y": 0.44, "width": 0.90, "height": 0.07 },
+      "questionBoundingBox": {
+        "x": 0.05,
+        "y": 0.44,
+        "width": 0.9,
+        "height": 0.07
+      },
       "answerStatus": "answered",
       "answerText": "REST (Representational State Transfer) is an architectural style for distributed hypermedia systems. Key constraints: Stateless, Client-Server separation, Cacheable, Uniform Interface, Layered System, Code on Demand (optional).",
       "answerRegions": [
         {
           "pageNumber": 3,
-          "x": 0.05, "y": 0.08, "width": 0.88, "height": 0.22,
+          "x": 0.05,
+          "y": 0.08,
+          "width": 0.88,
+          "height": 0.22,
           "imageUrl": "/uploads/demo/answer_page3.png"
         },
         {
           "pageNumber": 4,
-          "x": 0.05, "y": 0.08, "width": 0.88, "height": 0.15,
+          "x": 0.05,
+          "y": 0.08,
+          "width": 0.88,
+          "height": 0.15,
           "imageUrl": "/uploads/demo/answer_page4.png"
         }
       ],
       "confidence": 0.88,
       "isReadable": true,
-      "notes": "Answer spans 2 pages"
+      "notes": "Answer spans 2 pages",
+      "maxMarks": 2,
+      "order": 3,
+      "matchType": "exact",
+      "grading": {
+        "marksAwarded": 2,
+        "maxMarks": 2,
+        "status": "correct",
+        "feedback": "Correct definition of REST and its constraints. Nicely concise."
+      }
     },
     {
       "id": "m-005",
@@ -171,19 +269,36 @@
       "questionDisplayLabel": "Q4(B)",
       "questionText": "Write HTTP status codes for: success, not found, server error, and unauthorized.",
       "questionPageNumber": 1,
-      "questionBoundingBox": { "x": 0.05, "y": 0.55, "width": 0.90, "height": 0.07 },
+      "questionBoundingBox": {
+        "x": 0.05,
+        "y": 0.55,
+        "width": 0.9,
+        "height": 0.07
+      },
       "answerStatus": "ambiguous",
       "answerText": "200 OK, 404 Not Found, 500..., 401",
       "answerRegions": [
         {
           "pageNumber": 4,
-          "x": 0.05, "y": 0.25, "width": 0.88, "height": 0.12,
+          "x": 0.05,
+          "y": 0.25,
+          "width": 0.88,
+          "height": 0.12,
           "imageUrl": "/uploads/demo/answer_page4.png"
         }
       ],
       "confidence": 0.58,
       "isReadable": true,
-      "notes": "Handwriting partially unclear — review recommended"
+      "notes": "Handwriting partially unclear — review recommended",
+      "maxMarks": 3,
+      "order": 4,
+      "matchType": "exact",
+      "grading": {
+        "marksAwarded": 1,
+        "maxMarks": 3,
+        "status": "partial",
+        "feedback": "Only some codes are legible. 200 and 404 are correct; please rewrite the rest more clearly."
+      }
     },
     {
       "id": "m-006",
@@ -192,19 +307,36 @@
       "questionDisplayLabel": "Q5",
       "questionText": "What is CSS Flexbox? Explain with a practical use-case.",
       "questionPageNumber": 2,
-      "questionBoundingBox": { "x": 0.05, "y": 0.10, "width": 0.90, "height": 0.07 },
+      "questionBoundingBox": {
+        "x": 0.05,
+        "y": 0.1,
+        "width": 0.9,
+        "height": 0.07
+      },
       "answerStatus": "answered",
       "answerText": "CSS Flexbox is a layout model that allows flexible arrangement of elements. Uses display:flex on container. Practical use: centering elements both horizontally and vertically, creating responsive navigation bars.",
       "answerRegions": [
         {
           "pageNumber": 2,
-          "x": 0.05, "y": 0.40, "width": 0.88, "height": 0.30,
+          "x": 0.05,
+          "y": 0.4,
+          "width": 0.88,
+          "height": 0.3,
           "imageUrl": "/uploads/demo/answer_page2.png"
         }
       ],
       "confidence": 0.93,
       "isReadable": true,
-      "notes": ""
+      "notes": "",
+      "maxMarks": 4,
+      "order": 5,
+      "matchType": "exact",
+      "grading": {
+        "marksAwarded": 2,
+        "maxMarks": 4,
+        "status": "partial",
+        "feedback": "Partly correct. Add a practical layout example to show where Flexbox helps."
+      }
     }
   ],
   "unmatchedAnswers": [
@@ -215,7 +347,10 @@
       "regions": [
         {
           "pageNumber": 4,
-          "x": 0.05, "y": 0.75, "width": 0.88, "height": 0.15,
+          "x": 0.05,
+          "y": 0.75,
+          "width": 0.88,
+          "height": 0.15,
           "imageUrl": "/uploads/demo/answer_page4.png"
         }
       ],
@@ -228,6 +363,39 @@
     "answered": 4,
     "unanswered": 1,
     "ambiguous": 1,
-    "unmatchedAnswers": 1
+    "unmatchedAnswers": 1,
+    "totalMarks": 24,
+    "marksAwarded": 15
+  },
+  "answerSheetPages": [
+    {
+      "pageNumber": 1,
+      "imageUrl": "/uploads/demo/answer_page1.png",
+      "width": 1200,
+      "height": 1600
+    },
+    {
+      "pageNumber": 2,
+      "imageUrl": "/uploads/demo/answer_page2.png",
+      "width": 1200,
+      "height": 1600
+    },
+    {
+      "pageNumber": 3,
+      "imageUrl": "/uploads/demo/answer_page3.png",
+      "width": 1200,
+      "height": 1600
+    },
+    {
+      "pageNumber": 4,
+      "imageUrl": "/uploads/demo/answer_page4.png",
+      "width": 1200,
+      "height": 1600
+    }
+  ],
+  "progress": {
+    "stage": "complete",
+    "percent": 100,
+    "message": "Done"
   }
 }

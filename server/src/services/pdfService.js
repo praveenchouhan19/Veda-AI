@@ -5,6 +5,28 @@ const config = require('../config');
 
 const UPLOAD_DIR = path.join(__dirname, '../../', config.uploadDir);
 
+// Rasterisation width in px. High enough for Gemini to read handwriting,
+// small enough to keep the inline base64 payload within request limits.
+const RENDER_WIDTH = 1600;
+const MAX_PAGES = 40;
+
+let pdfjsPromise = null;
+
+/**
+ * Load pdf.js. It needs these browser globals to rasterise vector paths and
+ * glyphs — without them every page renders blank.
+ */
+const loadPdfjs = () => {
+  if (!pdfjsPromise) {
+    const nc = require('@napi-rs/canvas');
+    if (!globalThis.DOMMatrix) globalThis.DOMMatrix = nc.DOMMatrix;
+    if (!globalThis.Path2D) globalThis.Path2D = nc.Path2D;
+    if (!globalThis.ImageData) globalThis.ImageData = nc.ImageData;
+    pdfjsPromise = import('pdfjs-dist/legacy/build/pdf.mjs');
+  }
+  return pdfjsPromise;
+};
+
 /**
  * Determine if a file is a PDF by extension.
  */
@@ -12,92 +34,157 @@ const isPdf = (filePath) => {
   return path.extname(filePath).toLowerCase() === '.pdf';
 };
 
+const ensureDir = (dir) => {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  return dir;
+};
+
+/**
+ * pdf.js needs a canvas factory to rasterise embedded image XObjects. Its Node
+ * default pulls in node-canvas, which clashes with sharp's libvips, so supply
+ * one backed by the same @napi-rs/canvas we already use.
+ */
+class NapiCanvasFactory {
+  create(width, height) {
+    const { createCanvas } = require('@napi-rs/canvas');
+    const canvas = createCanvas(Math.max(1, width), Math.max(1, height));
+    return { canvas, context: canvas.getContext('2d') };
+  }
+
+  reset(canvasAndContext, width, height) {
+    canvasAndContext.canvas.width = Math.max(1, width);
+    canvasAndContext.canvas.height = Math.max(1, height);
+  }
+
+  destroy(canvasAndContext) {
+    canvasAndContext.canvas.width = 0;
+    canvasAndContext.canvas.height = 0;
+    canvasAndContext.canvas = null;
+    canvasAndContext.context = null;
+  }
+}
+
+/**
+ * Render every page of a PDF to a PNG using pdf.js + @napi-rs/canvas.
+ * Pure JS with prebuilt binaries — no GraphicsMagick/ImageMagick needed.
+ */
+const renderPdfWithPdfjs = async (pdfPath, outputDir) => {
+  const pdfjs = await loadPdfjs();
+  const { createCanvas } = require('@napi-rs/canvas');
+  const pdfjsRoot = path.dirname(require.resolve('pdfjs-dist/package.json'));
+
+  const doc = await pdfjs.getDocument({
+    data: new Uint8Array(fs.readFileSync(pdfPath)),
+    isEvalSupported: false,
+    useSystemFonts: true,
+    CanvasFactory: NapiCanvasFactory,
+    standardFontDataUrl: path.join(pdfjsRoot, 'standard_fonts') + path.sep,
+    cMapUrl: path.join(pdfjsRoot, 'cmaps') + path.sep,
+    cMapPacked: true,
+  }).promise;
+
+  const pageCount = Math.min(doc.numPages, MAX_PAGES);
+  const results = [];
+
+  for (let i = 1; i <= pageCount; i++) {
+    const page = await doc.getPage(i);
+    const baseViewport = page.getViewport({ scale: 1 });
+    const viewport = page.getViewport({ scale: RENDER_WIDTH / baseViewport.width });
+
+    const canvas = createCanvas(Math.floor(viewport.width), Math.floor(viewport.height));
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, viewport.width, viewport.height);
+
+    await page.render({ canvasContext: ctx, viewport }).promise;
+
+    const imagePath = path.join(outputDir, `page.${i}.png`);
+    fs.writeFileSync(imagePath, canvas.toBuffer('image/png'));
+    page.cleanup();
+
+    results.push({
+      imagePath,
+      pageNumber: i,
+      width: canvas.width,
+      height: canvas.height,
+    });
+  }
+
+  await doc.destroy();
+  return results;
+};
+
+/**
+ * Fallback for PDFs pdf.js cannot parse. Needs GraphicsMagick/ImageMagick.
+ */
+const renderPdfWithPdf2pic = async (pdfPath, outputDir) => {
+  const { fromPath } = require('pdf2pic');
+  const convert = fromPath(pdfPath, {
+    density: 150,
+    saveFilename: 'page',
+    savePath: outputDir,
+    format: 'png',
+    width: RENDER_WIDTH,
+    preserveAspectRatio: true,
+  });
+
+  const result = await convert.bulk(-1, { responseType: 'image' });
+  if (!result || result.length === 0) throw new Error('pdf2pic produced no pages');
+
+  return result.slice(0, MAX_PAGES).map((r, i) => ({
+    imagePath: r.path,
+    pageNumber: i + 1,
+  }));
+};
+
 /**
  * Convert a PDF file to an array of PNG image paths (one per page).
- * Uses pure JS pdf-img-convert with fallback to pdf2pic or direct PDF.
  */
 const pdfToImages = async (pdfPath, prefix) => {
-  const outputDir = path.join(UPLOAD_DIR, prefix);
-  if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
+  const outputDir = ensureDir(path.join(UPLOAD_DIR, prefix));
 
-  // 1. Try pure JS pdf-img-convert (no native binaries required)
   try {
-    const pdfImgConvert = require('pdf-img-convert');
-    const pageData = await pdfImgConvert.convert(pdfPath, { width: 1200 });
-
-    if (pageData && pageData.length > 0) {
-      const results = [];
-      for (let i = 0; i < pageData.length; i++) {
-        const imagePath = path.join(outputDir, `page.${i + 1}.png`);
-        fs.writeFileSync(imagePath, pageData[i]);
-        results.push({
-          imagePath,
-          pageNumber: i + 1,
-        });
-      }
-      return results;
-    }
-  } catch (err1) {
-    console.warn('⚠️ pdf-img-convert failed, trying pdf2pic:', err1.message);
+    const pages = await renderPdfWithPdfjs(pdfPath, outputDir);
+    if (pages.length > 0) return pages;
+    throw new Error('pdf.js produced no pages');
+  } catch (err) {
+    console.warn(`⚠️ pdf.js render failed (${err.message}), trying pdf2pic...`);
   }
 
-  // 2. Try pdf2pic if system has GraphicsMagick/ImageMagick installed
   try {
-    const { fromPath } = require('pdf2pic');
-    const options = {
-      density: 150,
-      saveFilename: 'page',
-      savePath: outputDir,
-      format: 'png',
-      width: 1200,
-      height: 1600,
-    };
-    const convert = fromPath(pdfPath, options);
-    const result = await convert.bulk(-1, { responseType: 'image' });
-
-    if (result && result.length > 0) {
-      return result.map((r, i) => ({
-        imagePath: r.path,
-        pageNumber: i + 1,
-      }));
-    }
-  } catch (err2) {
-    console.warn('⚠️ pdf2pic failed, sending PDF directly to Gemini:', err2.message);
+    return await renderPdfWithPdf2pic(pdfPath, outputDir);
+  } catch (err) {
+    throw new Error(
+      `Could not convert PDF to images: ${err.message}. ` +
+        'The file may be corrupt, empty or password protected.'
+    );
   }
-
-  // 3. Fallback: Copy PDF directly for Gemini native PDF processing
-  const outputPath = path.join(outputDir, 'page.1.pdf');
-  fs.copyFileSync(pdfPath, outputPath);
-  return [{ imagePath: outputPath, pageNumber: 1, isPdfDirect: true }];
 };
 
 /**
  * For an image file (PNG/JPG), resize and return as a single page.
  */
 const imageToPageImage = async (imagePath, prefix) => {
-  const outputDir = path.join(UPLOAD_DIR, prefix);
-  if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
-
+  const outputDir = ensureDir(path.join(UPLOAD_DIR, prefix));
   const outputPath = path.join(outputDir, 'page.1.png');
 
-  await sharp(imagePath)
-    .resize({ width: 1200, withoutEnlargement: true })
+  const info = await sharp(imagePath)
+    .rotate() // apply EXIF orientation, otherwise bounding boxes land sideways
+    .resize({ width: RENDER_WIDTH, withoutEnlargement: true })
     .png()
     .toFile(outputPath);
 
-  return [{ imagePath: outputPath, pageNumber: 1 }];
+  return [{ imagePath: outputPath, pageNumber: 1, width: info.width, height: info.height }];
 };
 
 /**
- * Process a file (PDF or image) into page images/files for AI analysis.
- * Returns [{ imagePath, pageNumber, isPdfDirect? }]
+ * Process a file (PDF or image) into page images for AI analysis.
+ * Always returns real PNGs so the client can overlay bounding boxes.
+ * Returns [{ imagePath, pageNumber, width?, height? }]
  */
 const processFileToPages = async (filePath, prefix) => {
-  if (isPdf(filePath)) {
-    return await pdfToImages(filePath, prefix);
-  } else {
-    return await imageToPageImage(filePath, prefix);
-  }
+  if (!fs.existsSync(filePath)) throw new Error(`File not found: ${filePath}`);
+  return isPdf(filePath) ? pdfToImages(filePath, prefix) : imageToPageImage(filePath, prefix);
 };
 
 /**

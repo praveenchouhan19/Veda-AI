@@ -20,26 +20,29 @@ const normalizeQuestionNumber = (raw) => {
   let s = String(raw).trim().toLowerCase();
 
   // Remove common prefixes (order matters — longer first to avoid partial match)
-  s = s.replace(/^(question|answer|ans|no\.?|num\.?|q)\s*/i, '');
+  s = s.replace(/^(questions?|answers?|ans|sol(?:ution)?|no\.?|num\.?|q)\s*[.:-]?\s*/i, '');
 
-  // Remove trailing dot
-  s = s.replace(/\.$/, '');
+  // Normalize bracketed sub-parts before stripping punctuation, otherwise the
+  // closing bracket is removed first and "11(a)" degrades to "11(a".
+  s = s.replace(/\s*\(\s*([a-z]+)\s*\)/g, '$1');   // "11 (a)" → "11a", "11(iii)" → "11iii"
 
-  // Normalize sub-part separators: "11 (a)" → "11(a)", "11-a" → "11(a)"
-  s = s.replace(/\s*\(\s*([a-z])\s*\)/g, '$1'); // "11 (a)" → "11a"
-  s = s.replace(/\s*-\s*([a-z])$/g, '$1');        // "11-a" → "11a"
-  s = s.replace(/\s+/g, '');                        // remove remaining spaces
+  // Remove trailing punctuation left by "1.", "1)", "1 -"
+  s = s.replace(/[.):\-\s]+$/, '');
+
+  s = s.replace(/\s*[-.]\s*([a-z]+)$/g, '$1');    // "11-a" / "11.a" → "11a"
+  s = s.replace(/\s+/g, '');                       // remove remaining spaces
 
   return s;
 };
 
 /**
  * Parse a question string into { base, subPart }.
- * e.g. "11a" → { base: "11", subPart: "a" }
- *      "5"   → { base: "5",  subPart: null }
+ * e.g. "11a"   → { base: "11", subPart: "a" }
+ *      "11iii" → { base: "11", subPart: "iii" }
+ *      "5"     → { base: "5",  subPart: null }
  */
 const parseQuestionNumber = (normalized) => {
-  const match = normalized.match(/^(\d+)([a-z]?)$/);
+  const match = String(normalized || '').match(/^(\d+)([a-z]*)$/);
   if (match) {
     return {
       base: match[1],
@@ -47,6 +50,20 @@ const parseQuestionNumber = (normalized) => {
     };
   }
   return { base: normalized, subPart: null };
+};
+
+/**
+ * Sort comparator putting question numbers in printed paper order.
+ */
+const compareQuestionNumbers = (a, b) => {
+  const pa = parseQuestionNumber(a);
+  const pb = parseQuestionNumber(b);
+  const na = parseInt(pa.base, 10);
+  const nb = parseInt(pb.base, 10);
+
+  if (Number.isFinite(na) && Number.isFinite(nb) && na !== nb) return na - nb;
+  if (pa.base !== pb.base) return String(pa.base).localeCompare(String(pb.base));
+  return String(pa.subPart || '').localeCompare(String(pb.subPart || ''));
 };
 
 /**
@@ -70,6 +87,7 @@ const buildDisplayLabel = (normalized) => {
 module.exports = {
   normalizeQuestionNumber,
   parseQuestionNumber,
+  compareQuestionNumbers,
   questionNumbersMatch,
   buildDisplayLabel,
 };

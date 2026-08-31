@@ -9,6 +9,13 @@ const regionSchema = new mongoose.Schema({
   imageUrl: { type: String },
 }, { _id: false });
 
+const pageSchema = new mongoose.Schema({
+  pageNumber: { type: Number, required: true },
+  imageUrl: { type: String },
+  width: { type: Number },
+  height: { type: Number },
+}, { _id: false });
+
 const mappingSchema = new mongoose.Schema({
   id: { type: String, required: true },
   questionId: { type: String },
@@ -19,18 +26,23 @@ const mappingSchema = new mongoose.Schema({
   questionBoundingBox: {
     x: Number, y: Number, width: Number, height: Number,
   },
+  maxMarks: { type: Number },
+  order: { type: Number },
   answerStatus: {
     type: String,
     enum: ['answered', 'unanswered', 'ambiguous', 'unmatched'],
     default: 'unanswered',
   },
+  answerId: { type: String },
   answerText: { type: String },
   answerRegions: [regionSchema],
   confidence: { type: Number, default: 0 },
   isReadable: { type: Boolean, default: true },
+  matchType: { type: String },
   notes: { type: String },
   grading: {
     marksAwarded: Number,
+    maxMarks: Number,
     status: String,
     feedback: String,
   },
@@ -54,12 +66,21 @@ const assessmentSchema = new mongoose.Schema({
   answers: [mongoose.Schema.Types.Mixed],
   mappings: [mappingSchema],
   unmatchedAnswers: [mongoose.Schema.Types.Mixed],
+  questionPaperPages: [pageSchema],
+  answerSheetPages: [pageSchema],
   summary: {
     totalQuestions: Number,
     answered: Number,
     unanswered: Number,
     ambiguous: Number,
     unmatchedAnswers: Number,
+    totalMarks: Number,
+    marksAwarded: Number,
+  },
+  progress: {
+    stage: String,
+    percent: Number,
+    message: String,
   },
   status: {
     type: String,

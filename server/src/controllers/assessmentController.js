@@ -6,7 +6,8 @@ const mongoose = require('mongoose');
 const { extractQuestions } = require('../services/questionExtractor');
 const { extractAnswers } = require('../services/answerExtractor');
 const { mapAnswersToQuestions } = require('../services/mappingService');
-const { gradeAnswer } = require('../services/ai/geminiService');
+const { gradeAnswers } = require('../services/ai/geminiService');
+const { getPublicUrl } = require('../services/pdfService');
 const demoData = require('../data/demo.json');
 const config = require('../config');
 
@@ -24,6 +25,16 @@ const saveAssessment = async (data) => {
   } else {
     inMemoryStore.set(data._id || data.id, data);
     return data;
+  }
+};
+
+const updateAssessment = async (id, patch) => {
+  const existing = inMemoryStore.get(id) || {};
+  inMemoryStore.set(id, { ...existing, ...patch, updatedAt: new Date().toISOString() });
+
+  if (isMongoConnected()) {
+    const Assessment = require('../models/Assessment');
+    await Assessment.findOneAndUpdate({ _id: id }, patch).catch(() => {});
   }
 };
 
@@ -81,6 +92,7 @@ const analyzeDocuments = async (req, res, next) => {
       mimeType: answerSheetFile.mimetype,
     },
     createdAt: new Date().toISOString(),
+    progress: { stage: 'reading', percent: 5, message: 'Reading your documents' },
   };
 
   await saveAssessment(assessmentData);
@@ -95,20 +107,96 @@ const analyzeDocuments = async (req, res, next) => {
   });
 };
 
+const toPageManifest = (pages) =>
+  (pages || []).map((p) => ({
+    pageNumber: p.pageNumber,
+    imageUrl: getPublicUrl(p.imagePath),
+    width: p.width || null,
+    height: p.height || null,
+  }));
+
 const processAssessmentAsync = async (assessmentId, questionPaperFile, answerSheetFile, prefix) => {
   try {
+    // Progress is derived from real page counts so the UI reflects actual work.
+    const counters = { qpDone: 0, qpTotal: 0, asDone: 0, asTotal: 0 };
+    const reportProgress = async () => {
+      const total = counters.qpTotal + counters.asTotal;
+      const done = counters.qpDone + counters.asDone;
+      const percent = total > 0 ? 10 + Math.round((done / total) * 70) : 10;
+      await updateAssessment(assessmentId, {
+        progress: {
+          stage: 'extracting',
+          percent,
+          message: total > 0 ? `Extracting page ${Math.min(done + 1, total)} of ${total}` : 'Extracting',
+        },
+      });
+    };
+
     console.log(`[${assessmentId}] Stage 1 & 2: Extracting questions & answers concurrently...`);
     const [questionResult, answerResult] = await Promise.all([
-      extractQuestions(questionPaperFile.path, prefix),
-      extractAnswers(answerSheetFile.path, prefix),
+      extractQuestions(questionPaperFile.path, prefix, (done, total) => {
+        counters.qpDone = done;
+        counters.qpTotal = total;
+        reportProgress();
+      }),
+      extractAnswers(answerSheetFile.path, prefix, (done, total) => {
+        counters.asDone = done;
+        counters.asTotal = total;
+        reportProgress();
+      }),
     ]);
 
-    const { questions } = questionResult;
-    const { answers, unmatchedRegions } = answerResult;
+    const { questions, pages: questionPages } = questionResult;
+    const { answers, unmatchedRegions, pages: answerPages } = answerResult;
+
+    if (questions.length === 0) {
+      throw new Error(
+        'No questions could be read from the question paper. Please check the file is a readable question paper.'
+      );
+    }
 
     // Stage 3: Map answers to questions
     console.log(`[${assessmentId}] Stage 3: Mapping...`);
+    await updateAssessment(assessmentId, {
+      progress: { stage: 'mapping', percent: 85, message: 'Mapping answers to questions' },
+    });
     const { mappings, unmatchedAnswers, summary } = mapAnswersToQuestions(questions, answers, unmatchedRegions);
+
+    // Stage 4: Grade the answers we found
+    if (config.enableGrading) {
+      console.log(`[${assessmentId}] Stage 4: Grading...`);
+      await updateAssessment(assessmentId, {
+        progress: { stage: 'grading', percent: 92, message: 'Evaluating answers' },
+      });
+
+      const gradable = mappings.filter((m) => m.answerText && m.answerStatus !== 'unanswered');
+      const grades = await gradeAnswers(
+        gradable.map((m) => ({
+          id: m.id,
+          questionText: m.questionText,
+          answerText: m.answerText,
+          maxMarks: m.maxMarks,
+        }))
+      );
+
+      for (const mapping of mappings) {
+        const grade = grades[mapping.id];
+        if (grade) {
+          mapping.grading = grade;
+          mapping.maxMarks = grade.maxMarks;
+        } else if (mapping.answerStatus === 'unanswered') {
+          mapping.grading = {
+            marksAwarded: 0,
+            maxMarks: mapping.maxMarks || 5,
+            status: 'incorrect',
+            feedback: 'No answer was found for this question on the answer sheet.',
+          };
+        }
+      }
+
+      summary.totalMarks = mappings.reduce((sum, m) => sum + (m.grading?.maxMarks || 0), 0);
+      summary.marksAwarded = mappings.reduce((sum, m) => sum + (m.grading?.marksAwarded || 0), 0);
+    }
 
     const completed = {
       _id: assessmentId,
@@ -119,30 +207,22 @@ const processAssessmentAsync = async (assessmentId, questionPaperFile, answerShe
       mappings,
       unmatchedAnswers,
       summary,
+      questionPaperPages: toPageManifest(questionPages),
+      answerSheetPages: toPageManifest(answerPages),
+      progress: { stage: 'complete', percent: 100, message: 'Done' },
       updatedAt: new Date().toISOString(),
     };
 
-    // Update stored assessment
-    if (isMongoConnected()) {
-      const Assessment = require('../models/Assessment');
-      await Assessment.findOneAndUpdate({ _id: assessmentId }, completed);
-    } else {
-      const existing = inMemoryStore.get(assessmentId);
-      inMemoryStore.set(assessmentId, { ...existing, ...completed });
-    }
+    await updateAssessment(assessmentId, completed);
 
     console.log(`[${assessmentId}] ✅ Complete — ${summary.answered}/${summary.totalQuestions} answered`);
   } catch (err) {
     console.error(`[${assessmentId}] ❌ Pipeline error:`, err.message);
-    const existing = inMemoryStore.get(assessmentId) || {};
-    const errData = { ...existing, status: 'error', error: err.message, updatedAt: new Date().toISOString() };
-
-    if (isMongoConnected()) {
-      const Assessment = require('../models/Assessment');
-      await Assessment.findOneAndUpdate({ _id: assessmentId }, errData).catch(() => {});
-    } else {
-      inMemoryStore.set(assessmentId, errData);
-    }
+    await updateAssessment(assessmentId, {
+      status: 'error',
+      error: err.message,
+      progress: { stage: 'error', percent: 100, message: err.message },
+    });
   }
 };
 
