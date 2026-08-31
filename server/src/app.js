@@ -16,17 +16,20 @@ const app = express();
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(morgan(config.nodeEnv === 'production' ? 'combined' : 'dev'));
 
-// CORS — only the configured client origins may call the API.
-const allowedOrigins = config.clientUrl
-  .split(',')
-  .map((o) => o.trim())
-  .filter(Boolean);
+// CORS — restricted to CLIENT_URL when it is set, open otherwise.
+const { allowedOrigins } = config;
+
+if (allowedOrigins.length === 0) {
+  console.warn('⚠️  CLIENT_URL not set — accepting API requests from any origin.');
+}
 
 app.use(cors({
   origin: (origin, callback) => {
     // Same-origin/server-to-server requests send no Origin header.
-    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
-    return callback(new Error(`Origin ${origin} is not allowed by CORS`));
+    if (!origin || allowedOrigins.length === 0) return callback(null, true);
+    // Deny by omitting CORS headers rather than throwing, which would turn a
+    // blocked preflight into an opaque 500.
+    callback(null, allowedOrigins.includes(origin));
   },
   credentials: true,
   methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
